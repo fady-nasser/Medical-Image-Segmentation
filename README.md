@@ -47,15 +47,6 @@ A comprehensive web-based platform for visualizing, comparing, and evaluating AI
 - Export individual organ masks
 - Batch processing support
 
-### 🎨 Anatomical Coverage
-Supports segmentation of **104 anatomical structures** including:
-- Lungs (5 lobes)
-- Abdominal organs (liver, kidneys, spleen, pancreas, etc.)
-- Cardiovascular system (heart chambers, major vessels)
-- Skeletal structures (vertebrae, ribs, pelvis, limbs)
-- Muscular system (gluteus, iliopsoas, autochthon)
-- And many more...
-
 ## Technology Stack
 
 ### Backend
