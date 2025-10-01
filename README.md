@@ -4,15 +4,12 @@ A comprehensive web-based platform for visualizing, comparing, and evaluating AI
 
 ## Demo Video
 
-[Watch Demo Video](https://)
+[Watch Demo Video](https://drive.google.com/file/d/1Xu1ydiyI9h1_rTBgqpbKc5EHZQngdqMm/view?usp=drive_link)
 
 ## Screenshots
 
 ### 3D Visualization
 ![3D Visualization](screenshots/3d_visualization.png)
-
-### Slice Viewer with Overlays
-![Slice Viewer](screenshots/slice_viewer.png)
 
 ### VR Mode
 ![VR Mode](screenshots/vr_mode.png)
