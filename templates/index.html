@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Segmentation Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #333;
+            height: 100vh;
+            overflow: auto;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+            gap: 0;
+            overflow: hidden;
+        }
+        
+        .header {
+            grid-column: 1 / -1;
+            background: #1a1a2e;
+            color: white;
+            padding: 0 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .header .patient-info {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        .sidebar {
+            background: white;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            height: calc(100vh - 60px);
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-rows: 2fr 1fr;
+            gap: 10px;
+            padding: 10px;
+            overflow-y: auto;
+            height: calc(100vh - 60px);
+        }
+        
+        
+        .viewport-3d {
+            background: #0f0f1e;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        #canvas3d {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        .slice-viewer {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            overflow: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        
+        .slice-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .slice-view {
+            position: relative;
+        }
+        
+        .slice-view canvas {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+        
+        .slice-view h3 {
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #555;
+        }
+        
+        .control-group {
+            margin-bottom: 25px;
+        }
+        
+        .control-group h3 {
+            font-size: 16px;
+            color: #1a1a2e;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #2a5298;
+        }
+        
+        .model-selector {
+            margin-bottom: 20px;
+        }
+        
+        .model-selector select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #2a5298;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .model-selector select:hover {
+            border-color: #1e3c72;
+        }
+        
+        .download-section {
+            margin-bottom: 20px;
+        }
+        
+        .download-btn {
+            width: 100%;
+            padding: 12px;
+            background: #4ecdc4;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .download-btn:hover {
+            background: #3daba3;
+            transform: translateY(-2px);
+        }
+        
+        .organ-btn {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #f5f5f5;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .organ-btn:hover {
+            background: #e8f4f8;
+            border-color: #2a5298;
+        }
+        
+        .organ-btn.active {
+            background: #2a5298;
+            color: white;
+            border-color: #2a5298;
+        }
+        
+        .part-item {
+            padding: 10px;
+            background: #fafafa;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            border-left: 3px solid transparent;
+        }
+        
+        .part-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .part-name {
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .color-picker {
+            width: 40px;
+            height: 28px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .opacity-slider {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+            background: #ddd;
+        }
+        
+        .opacity-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #2a5298;
+            cursor: pointer;
+        }
+        
+        .slider-container {
+            margin: 15px 0;
+        }
+        
+        .slider-container label {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 8px;
+            color: #666;
+        }
+        
+        .slice-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+            background: #ddd;
+        }
+        
+        .slice-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #2a5298;
+            cursor: pointer;
+        }
+        
+        .metrics-panel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+        
+        .metrics-panel h3 {
+            font-size: 15px;
+            margin-bottom: 12px;
+        }
+        
+        .metric-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .metric-item:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-value {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+        }
+        
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Medical Segmentation</h1>
+            <div class="patient-info">Patient: s0010 | CT Scan Analysis</div>
+        </div>
+        
+        <div class="sidebar">
+            <div class="model-selector">
+                <h3 style="font-size: 14px; margin-bottom: 8px; color: #666;">AI Model</h3>
+                <select id="model-select">
+                    <option value="TotalSegmentator">TotalSegmentator</option>
+                    <option value="wholebody_ct_segmentation">Wholebody CT Segmentation</option>
+                    <option value="MedIm">MedIm</option>
+                </select>
+            </div>
+            
+            <div class="download-section">
+                <button class="download-btn" id="vr-btn" style="background: #9b59b6; margin-bottom: 10px;">View in VR Mode</button>
+                <button class="download-btn" id="download-btn">Download Complete 3D Model (OBJ)</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>Select Organ System</h3>
+                <button class="organ-btn active" data-organ="Lungs">Lungs</button>
+                <button class="organ-btn" data-organ="Lower Abdominal">Lower Abdominal</button>
+                <button class="organ-btn" data-organ="Gluteus">Gluteus</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>Parts & Controls</h3>
+                <div id="parts-list"></div>
+            </div>
+            
+            <div class="metrics-panel" id="metrics-panel">
+                <h3>Average Metrics</h3>
+                <div class="metric-item">
+                    <span>Dice Score:</span>
+                    <span class="metric-value" id="dice-value">Loading...</span>
+                </div>
+                <div class="metric-item">
+                    <span>IoU:</span>
+                    <span class="metric-value" id="iou-value">Loading...</span>
+                </div>
+                <div class="metric-item">
+                    <span>HD95:</span>
+                    <span class="metric-value" id="hd95-value">Loading...</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="viewport-3d">
+                <canvas id="canvas3d"></canvas>
+                <div class="loading" id="loading3d">
+                    <div class="spinner"></div>
+                    Loading 3D model...
+                </div>
+            </div>
+            
+            <div class="slice-viewer">
+                <div class="slider-container">
+                    <label>Slice: <span id="slice-number">0</span> / <span id="max-slices">0</span></label>
+                    <input type="range" class="slice-slider" id="slice-slider" min="0" max="100" value="50">
+                </div>
+                <div class="slice-container">
+                    <div class="slice-view">
+                        <h3>Raw CT</h3>
+                        <canvas id="raw-canvas"></canvas>
+                    </div>
+                    <div class="slice-view">
+                        <h3>Ground Truth</h3>
+                        <canvas id="gt-canvas"></canvas>
+                    </div>
+                    <div class="slice-view">
+                        <h3>Prediction</h3>
+                        <canvas id="pred-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // State
+        let currentOrgan = 'Lungs';
+        let currentModel = 'TotalSegmentator';
+        let scene, camera, renderer, controls;
+        let meshes = {};
+        let partStates = {};
+        let vrMode = false;
+        let vrButton;
+        
+        // Initialize Three.js
+        function init3D() {
+            const canvas = document.getElementById('canvas3d');
+            const container = canvas.parentElement;
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f0f1e);
+            
+            camera = new THREE.PerspectiveCamera(
+                75,
+                container.clientWidth / container.clientHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(0, 0, 300);
+            
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.xr.enabled = true;
+            
+            // Add VR button
+            if (navigator.xr) {
+                vrButton = document.getElementById('vr-btn');
+            }
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 10, 10);
+            scene.add(dirLight);
+            
+            const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+            dirLight2.position.set(-10, -10, -10);
+            scene.add(dirLight2);
+            
+            // Simple orbit controls (mouse drag to rotate)
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            
+            canvas.addEventListener('mousedown', () => isDragging = true);
+            canvas.addEventListener('mouseup', () => isDragging = false);
+            canvas.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const deltaX = e.clientX - previousMousePosition.x;
+                    const deltaY = e.clientY - previousMousePosition.y;
+                    
+                    scene.rotation.y += deltaX * 0.01;
+                    scene.rotation.x += deltaY * 0.01;
+                }
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+            
+            // Zoom with mouse wheel
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                camera.position.z += e.deltaY * 0.1;
+                camera.position.z = Math.max(50, Math.min(500, camera.position.z));
+            });
+            
+            animate();
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        
+        // VR Mode Toggle
+        function toggleVRMode() {
+            if (!renderer.xr.isPresenting) {
+                // Start VR session
+                navigator.xr.requestSession('immersive-vr', {
+                    optionalFeatures: ['local-floor', 'bounded-floor']
+                }).then((session) => {
+                    renderer.xr.setSession(session);
+                    vrMode = true;
+                    document.getElementById('vr-btn').textContent = 'Exit VR Mode';
+                }).catch((err) => {
+                    console.log('VR not available, using cardboard mode');
+                    // Fallback to split-screen mode for testing
+                    enableCardboardMode();
+                });
+            } else {
+                // Exit VR
+                renderer.xr.getSession().end();
+                vrMode = false;
+                document.getElementById('vr-btn').textContent = 'View in VR Mode';
+            }
+        }
+        
+        // Cardboard/testing mode (split screen)
+        function enableCardboardMode() {
+            const container = document.querySelector('.viewport-3d');
+            const wasFullscreen = !!document.fullscreenElement;
+            
+            if (!wasFullscreen) {
+                container.requestFullscreen().then(() => {
+                    // Create split-screen effect
+                    const canvas = document.getElementById('canvas3d');
+                    const leftEye = new THREE.PerspectiveCamera(75, container.clientWidth / 2 / container.clientHeight, 0.1, 1000);
+                    const rightEye = new THREE.PerspectiveCamera(75, container.clientWidth / 2 / container.clientHeight, 0.1, 1000);
+                    
+                    leftEye.position.copy(camera.position);
+                    rightEye.position.copy(camera.position);
+                    leftEye.position.x -= 0.032; // IPD (interpupillary distance)
+                    rightEye.position.x += 0.032;
+                    
+                    renderer.setSize(container.clientWidth, container.clientHeight);
+                    renderer.setScissorTest(true);
+                    
+                    function renderCardboard() {
+                        if (document.fullscreenElement) {
+                            // Left eye
+                            renderer.setViewport(0, 0, container.clientWidth / 2, container.clientHeight);
+                            renderer.setScissor(0, 0, container.clientWidth / 2, container.clientHeight);
+                            renderer.render(scene, leftEye);
+                            
+                            // Right eye
+                            renderer.setViewport(container.clientWidth / 2, 0, container.clientWidth / 2, container.clientHeight);
+                            renderer.setScissor(container.clientWidth / 2, 0, container.clientWidth / 2, container.clientHeight);
+                            renderer.render(scene, rightEye);
+                            
+                            requestAnimationFrame(renderCardboard);
+                        } else {
+                            // Exited fullscreen, restore normal rendering
+                            renderer.setScissorTest(false);
+                            renderer.setViewport(0, 0, container.clientWidth, container.clientHeight);
+                            document.getElementById('vr-btn').textContent = 'View in VR Mode';
+                        }
+                    }
+                    
+                    document.getElementById('vr-btn').textContent = 'Exit VR Mode (Cardboard)';
+                    renderCardboard();
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
+        // Download complete organ model
+        async function downloadCompleteModel() {
+            try {
+                const response = await fetch(`/api/download/obj/${currentOrgan}/${currentModel}`);
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${currentOrgan}_${currentModel}_complete.obj`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('Download failed:', error);
+                alert('Failed to download complete model');
+            }
+        }
+        
+        // Load parts for organ
+        async function loadOrganParts(organ) {
+            const response = await fetch(`/api/organ/${organ}/parts/${currentModel}`);
+            const data = await response.json();
+            
+            const partsList = document.getElementById('parts-list');
+            partsList.innerHTML = '';
+            
+            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', '#6c5ce7', '#fd79a8', '#fdcb6e', '#00b894'];
+            
+            data.parts.forEach((part, index) => {
+                const color = colors[index % colors.length];
+                partStates[part.filename] = {
+                    visible: true,
+                    color: color,
+                    opacity: 0.7
+                };
+                
+                const partDiv = document.createElement('div');
+                partDiv.className = 'part-item';
+                partDiv.style.borderLeftColor = color;
+                partDiv.innerHTML = `
+                    <div class="part-name">${part.name}</div>
+                    <div class="part-controls">
+                        <input type="checkbox" class="checkbox" checked data-part="${part.filename}">
+                        <input type="color" class="color-picker" value="${color}" data-part="${part.filename}">
+                        <input type="range" class="opacity-slider" min="0" max="1" step="0.01" value="0.7" data-part="${part.filename}">
+                    </div>
+                `;
+                partsList.appendChild(partDiv);
+                
+                // Event listeners
+                partDiv.querySelector('.checkbox').addEventListener('change', (e) => {
+                    partStates[part.filename].visible = e.target.checked;
+                    updateMeshVisibility(part.filename);
+                });
+                
+                partDiv.querySelector('.color-picker').addEventListener('change', (e) => {
+                    partStates[part.filename].color = e.target.value;
+                    updateMeshColor(part.filename);
+                });
+                
+                partDiv.querySelector('.opacity-slider').addEventListener('input', (e) => {
+                    partStates[part.filename].opacity = parseFloat(e.target.value);
+                    updateMeshOpacity(part.filename);
+                });
+            });
+            
+            // Load 3D meshes
+            load3DMeshes(organ, data.parts);
+            
+            // Load metrics
+            loadMetrics(organ);
+        }
+        
+        async function load3DMeshes(organ, parts) {
+            document.getElementById('loading3d').style.display = 'block';
+            
+            // Clear existing meshes
+            Object.values(meshes).forEach(mesh => scene.remove(mesh));
+            meshes = {};
+            
+            for (const part of parts) {
+                if (!part.available_pred) continue;
+                
+                try {
+                    const response = await fetch(`/api/organ/${organ}/mesh/${part.filename}/${currentModel}`);
+                    const meshData = await response.json();
+                    
+                    if (meshData.vertices && meshData.faces) {
+                        const geometry = new THREE.BufferGeometry();
+                        
+                        const vertices = new Float32Array(meshData.vertices.flat());
+                        const indices = new Uint32Array(meshData.faces.flat());
+                        
+                        geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                        geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+                        geometry.computeVertexNormals();
+                        
+                        const state = partStates[part.filename];
+                        const material = new THREE.MeshPhongMaterial({
+                            color: state.color,
+                            transparent: true,
+                            opacity: state.opacity,
+                            side: THREE.DoubleSide,
+                            shininess: 30,
+                            flatShading: false
+                        });
+                        
+                        const mesh = new THREE.Mesh(geometry, material);
+                        mesh.position.set(-128, -128, -64); // Center the model
+                        meshes[part.filename] = mesh;
+                        scene.add(mesh);
+                    }
+                } catch (error) {
+                    console.error(`Error loading mesh for ${part.filename}:`, error);
+                }
+            }
+            
+            document.getElementById('loading3d').style.display = 'none';
+        }
+        
+        function updateMeshVisibility(filename) {
+            if (meshes[filename]) {
+                meshes[filename].visible = partStates[filename].visible;
+            }
+        }
+        
+        function updateMeshColor(filename) {
+            if (meshes[filename]) {
+                meshes[filename].material.color.set(partStates[filename].color);
+            }
+        }
+        
+        function updateMeshOpacity(filename) {
+            if (meshes[filename]) {
+                meshes[filename].material.opacity = partStates[filename].opacity;
+            }
+        }
+        
+        async function loadMetrics(organ) {
+            // Set loading state
+            document.getElementById('dice-value').textContent = 'Loading...';
+            document.getElementById('iou-value').textContent = 'Loading...';
+            document.getElementById('hd95-value').textContent = 'Loading...';
+            
+            try {
+                const response = await fetch(`/api/organ/${organ}/metrics/${currentModel}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                document.getElementById('dice-value').textContent = data.average.dice.toFixed(4);
+                document.getElementById('iou-value').textContent = data.average.iou.toFixed(4);
+                document.getElementById('hd95-value').textContent = data.average.hd95.toFixed(2);
+            } catch (error) {
+                console.error('Error loading metrics:', error);
+                document.getElementById('dice-value').textContent = 'N/A';
+                document.getElementById('iou-value').textContent = 'N/A';
+                document.getElementById('hd95-value').textContent = 'N/A';
+            }
+        }
+        
+        // Slice viewer
+        let currentSlice = 50;
+        let maxSlices = 100;
+        let rawImageCache = null;
+        
+        async function updateSliceView() {
+            const sliceIdx = currentSlice;
+            document.getElementById('slice-number').textContent = sliceIdx;
+            
+            try {
+                // Get raw slice
+                const rawResponse = await fetch(`/api/slice/${sliceIdx}`);
+                
+                if (!rawResponse.ok) {
+                    throw new Error(`HTTP ${rawResponse.status}`);
+                }
+                
+                const rawData = await rawResponse.json();
+                
+                maxSlices = rawData.max_slices;
+                document.getElementById('max-slices').textContent = maxSlices;
+                document.getElementById('slice-slider').max = maxSlices - 1;
+                
+                // Display raw image
+                const rawCanvas = document.getElementById('raw-canvas');
+                const rawCtx = rawCanvas.getContext('2d');
+                const rawImg = new Image();
+                
+                rawImg.onload = async () => {
+                    rawCanvas.width = rawImg.width;
+                    rawCanvas.height = rawImg.height;
+                    rawCtx.drawImage(rawImg, 0, 0);
+                    rawImageCache = rawImg;
+                    
+                    // Get organ overlays
+                    try {
+                        const overlayResponse = await fetch(`/api/slice/${currentOrgan}/${sliceIdx}/${currentModel}`);
+                        
+                        if (!overlayResponse.ok) {
+                            throw new Error(`HTTP ${overlayResponse.status}`);
+                        }
+                        
+                        const overlayData = await overlayResponse.json();
+                        
+                        // Display GT overlay
+                        const gtCanvas = document.getElementById('gt-canvas');
+                        const gtCtx = gtCanvas.getContext('2d');
+                        gtCanvas.width = rawImg.width;
+                        gtCanvas.height = rawImg.height;
+                        gtCtx.drawImage(rawImg, 0, 0);
+                        
+                        const gtImg = new Image();
+                        gtImg.onload = () => {
+                            gtCtx.drawImage(gtImg, 0, 0);
+                        };
+                        gtImg.src = overlayData.gt_overlay;
+                        
+                        // Display Pred overlay
+                        const predCanvas = document.getElementById('pred-canvas');
+                        const predCtx = predCanvas.getContext('2d');
+                        predCanvas.width = rawImg.width;
+                        predCanvas.height = rawImg.height;
+                        predCtx.drawImage(rawImg, 0, 0);
+                        
+                        const predImg = new Image();
+                        predImg.onload = () => {
+                            predCtx.drawImage(predImg, 0, 0);
+                        };
+                        predImg.src = overlayData.pred_overlay;
+                    } catch (overlayError) {
+                        console.error('Error loading overlays:', overlayError);
+                        // Still show raw image even if overlays fail
+                    }
+                };
+                
+                rawImg.src = rawData.raw;
+                
+            } catch (error) {
+                console.error('Error updating slice view:', error);
+            }
+        }
+        
+        // Event listeners
+        document.querySelectorAll('.organ-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.organ-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentOrgan = e.target.dataset.organ;
+                loadOrganParts(currentOrgan);
+                updateSliceView();
+            });
+        });
+        
+        document.getElementById('model-select').addEventListener('change', (e) => {
+            currentModel = e.target.value;
+            loadOrganParts(currentOrgan);
+            updateSliceView();
+        });
+        
+        document.getElementById('download-btn').addEventListener('click', () => {
+            downloadCompleteModel();
+        });
+        
+        document.getElementById('vr-btn').addEventListener('click', () => {
+            toggleVRMode();
+        });
+        
+        document.getElementById('slice-slider').addEventListener('input', (e) => {
+            currentSlice = parseInt(e.target.value);
+            updateSliceView();
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('canvas3d');
+            const container = canvas.parentElement;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+        
+        // Initialize
+        init3D();
+        loadOrganParts(currentOrgan);
+        updateSliceView();
+    </script>
+</body>
+</html>
